@@ -7,7 +7,7 @@ import re
 from requests import Session
 from threading import Thread
 from time import sleep
-from xml.etree import ElementTree
+from bs4 import BeautifulSoup
 
 
 class LogBookValidationError(Exception):
@@ -325,8 +325,8 @@ class LogBook(SINTACSession):
         hood_t = fmt_t(hood_t)
 
         # Aircraft class and airworthiness category validation
-        acft = self.get_class(reg)
-        if acft['CD_CATEGORIA'] in ['TPN', 'TPX', 'TPR']:
+        acft = self.get_acft(reg)
+        if acft['cd_categoria'] in ['TPN', 'TPX', 'TPR']:
             raise LogBookValidationError('O registro de horas de empresas '
                                          'aereas deve ser feito pela propria '
                                          'empresa.')
@@ -334,15 +334,15 @@ class LogBook(SINTACSession):
         data = {
             'acao': 'I',
             'ID_AERONAUTA': self.__logbook_id__,
-            'ID_HABILITACAO': acft['ID_DOMINIO_HABILITACAO'],
-            'CD_HABILITACAO': acft['CD_TIPO'],
+            'ID_HABILITACAO': acft['id_dominio_habilitacao'],
+            'CD_HABILITACAO': acft['cd_tipo'],
             'txtDataVoo': date,
             'txtPousos': ldg,
             'cmbFuncao': role,
             'txtObservacao': rmk,
             'cmbSimulador': 'N',
             'txtMatricula': reg,
-            'hdhabilitacao': acft['CD_CATEGORIA'],
+            'hdhabilitacao': acft['cd_categoria'],
             'txtOrigem': dep,
             'txtDestino': dst,
             'txtDiurno': day_t,
@@ -360,7 +360,7 @@ class LogBook(SINTACSession):
             if not e.message.endswith('sucesso!'):
                 raise
 
-    def get_class(self, registration):
+    def get_acft(self, registration):
         """Get aircraft class and airworthiness category
 
         :param str registration: aircraft registration
@@ -371,15 +371,15 @@ class LogBook(SINTACSession):
         """
         registration = registration.replace('-', '')
 
-        response = self.get('/SACI/CIV/Digital/buscaHabilitacaoXML.asp',
-                            params={'CD_MARCA': registration})
+        response = BeautifulSoup(
+            self.get('/SACI/CIV/Digital/buscaHabilitacaoXML.asp',
+                     params={'CD_MARCA': registration}).text)
 
-        elements = ElementTree.fromstring(response.text)
-
-        if not len(elements):
+        if not response.elementos.elemento:
             raise SINTACError('Aircraft registration not found')
 
-        return dict((attr.tag, attr.text) for attr in elements[0])
+        return dict((t.name, t.text) for t in
+                    response.elementos.elemento.children)
 
     def get_logbook_id(self):
         response = self.get('/SACI/CIV/Digital/incluir.asp')
