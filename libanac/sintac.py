@@ -365,7 +365,23 @@ class LogBook(SINTACSession):
         self.post('/SACI/CIV/Digital/manter.asp', data=data,
                   ignore_alerts=r' sucesso.$')
 
+    def delete_drafts(self, draft_ids):
+        """Delete log book drafts
 
+        :param draft_ids: list of log book entries to delete or 'all' to delete
+            all drafts
+        """
+
+        if draft_ids.lower() == 'all':
+            draft_ids = [e['id'] for e in self.get_drafts()]
+
+        for draft_id in draft_ids:
+            params = {
+                'ID_REGISTRO_CIV': draft_id,
+                'ID_AERONAUTA': self.__logbook_id__,
+            }
+
+            self.get('/SACI/CIV/Digital/excluirHoraXML.asp', params=params)
 
     def get_acft(self, registration):
         """Get aircraft class and airworthiness category
@@ -388,6 +404,47 @@ class LogBook(SINTACSession):
         return dict((t.name, t.text) for t in
                     response.elementos.elemento.children)
 
+    def get_drafts(self, pages=None):
+        """Get log book drafts
+
+        :param list pages: List of pages to process
+        """
+        return filter(lambda x: x['Status'] == 'RASCUNHO',
+                      self.get_entries(pages))
+
+    def get_entries(self, pages=None):
+        """Get log book entries
+
+        :param list pages: List of pages to process
+        """
+
+        if pages is None:
+            response = BeautifulSoup(
+                self.get('/SACI/CIV/Digital/incluir.asp').text)
+
+            last_page = response.find(
+                'td', 'paginacao').find(
+                'a', text=u'\xdaltimo\xa0>>')['onclick'][-3:-1]
+
+            pages = xrange(1, int(last_page) + 1)
+
+        for page in pages:
+            response = BeautifulSoup(
+                self.post('/SACI/CIV/Digital/incluir.asp',
+                          data={'paginaAtual': page}).text)
+
+            entries = response.body.find(
+                'input', attrs={'name': 'paginaAtual'}).find_all('tr', id=True)
+
+            if entries:
+                header = [td.text for td in
+                          entries[0].find_previous_sibling().find_all()]
+
+                for tr in entries:
+                    yield dict(zip(
+                        ['id'] + header,
+                        [tr['id']] + [td.text for td in tr.find_all()]))
+
     def get_logbook_id(self):
         """Get user log book id"""
 
@@ -400,3 +457,22 @@ class LogBook(SINTACSession):
 
         raise SINTACError('Could not get pilot logbook id')
 
+    def send_drafts(self, draft_ids):
+        """Send log book drafts
+
+        :param draft_ids: list of log book entries to send or 'all' to send all
+            drafts
+        """
+
+        if draft_ids.lower() == 'all':
+            draft_ids = [e['id'] for e in self.get_drafts()]
+
+        for draft_id in draft_ids:
+            data = {
+                'acao': 'E',
+                'ID_REGISTRO_CIV': draft_id,
+                'txtMotivoAlteracao': '',
+            }
+
+            self.post('/SACI/CIV/Digital/manter.asp', data=data,
+                      ignore_alerts=r' sucesso.$')
