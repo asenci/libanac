@@ -190,6 +190,12 @@ class SINTACSession(Session):
 
 
 class LogBook(SINTACSession):
+    """LogBook session management
+
+    :param str username: user name
+    :param str password: user password
+    """
+
     __logbook_id__ = None
     __roles__ = {
         '02': 'Second-in-command',
@@ -382,9 +388,11 @@ class LogBook(SINTACSession):
                     response.elementos.elemento.children)
 
     def get_logbook_id(self):
+        """Get user log book id"""
+
         response = self.get('/SACI/CIV/Digital/incluir.asp')
         logbook_id = re.search(r'''\s*name=['"]ID_AERONAUTA['"]\s*value=['"](?P<id>[0-9]+)['"]\s*''',
-                             response.text, re.IGNORECASE)
+                               response.text, re.IGNORECASE)
 
         if logbook_id:
             return logbook_id.group('id')
