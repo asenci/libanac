@@ -62,7 +62,7 @@ class SINTACSession(Session):
     def request(self, method, url, params=None, data=None, headers=None,
                 cookies=None, files=None, auth=None, timeout=None,
                 allow_redirects=True, proxies=None, hooks=None, stream=None,
-                verify=None, cert=None, json=None):
+                verify=None, cert=None, json=None, ignore_alerts=None):
         """Constructs a :class:`Request <Request>`, prepares it and sends it.
         Returns :class:`Response <Response>` object.
 
@@ -96,6 +96,8 @@ class SINTACSession(Session):
             A CA_BUNDLE path can also be provided.
         :param cert: (optional) if String, path to ssl client cert file (.pem).
             If Tuple, ('cert', 'key') pair.
+        :param ignore_alerts: (optional) RegEx to match alert messages to be
+            ignored
         """
 
         if self.__expired__:
@@ -119,7 +121,8 @@ class SINTACSession(Session):
                           response.text, re.IGNORECASE)
 
         if alert is not None:
-            raise SINTACError(alert.group('message').encode('utf8'))
+            if re.search(ignore_alerts, alert.group('message')) is None:
+                raise SINTACError(alert.group('message').encode('utf8'))
 
         return response
 
@@ -359,12 +362,10 @@ class LogBook(SINTACSession):
             'salvar': 'Salvar+rascunho',
         }
 
-        try:
-            self.post('/SACI/CIV/Digital/manter.asp', data=data)
+        self.post('/SACI/CIV/Digital/manter.asp', data=data,
+                  ignore_alerts=r' sucesso.$')
 
-        except SINTACError as e:
-            if not e.message.endswith('sucesso!'):
-                raise
+
 
     def get_acft(self, registration):
         """Get aircraft class and airworthiness category
@@ -398,3 +399,4 @@ class LogBook(SINTACSession):
             return logbook_id.group('id')
 
         raise SINTACError('Could not get pilot logbook id')
+
