@@ -22,11 +22,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 __title__ = 'libanac'
 __summary__ = 'Python library for interacting with ANAC (Agencia Nacional de' \
               ' Aviacao Civil) online services'
-__url__ = 'http://bitbucket.org/asenci/libanac'
+__url__ = 'https://github.com/asenci/libanac'
 
 __version__ = '0.1'
 
-__author__ = 'Andre Sencioles Vitorio Oliveira'
-__email__ = 'andre@bcp.net.br'
+__author__ = 'Andre Sencioles'
+__email__ = 'asenci@gmail.com'
 
 __license__ = 'ISC License'
